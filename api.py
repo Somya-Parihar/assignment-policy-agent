@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from graph_builder import graph_app
+from tools.graph_builder import graph_app
 
 app = FastAPI(title="Insurance Agent API")
 

@@ -1,6 +1,6 @@
 # main.py
 from langchain_core.messages import HumanMessage, AIMessage
-from graph_builder import graph_app  # <--- Changed import
+from tools.graph_builder import graph_app  # <--- Changed import
 
 # --- EXECUTION UTILITY ---
 def run_chat(thread_id):
