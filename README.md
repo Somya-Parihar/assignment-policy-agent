@@ -10,7 +10,7 @@ A robust AI agent built with **LangGraph**, **LangChain**, and **Gemini** that s
 * **State Management:** Uses a Finite State Machine (FSM) to ensure all lead data is collected naturally, one by one.
 * **Validation:** strict checks on inputs (e.g., Age must be 0–110).
 * **Persistent Memory:** Saves conversation history to `checkpoints.db` (SQLite) so you can close and resume chats.
-* **Efficient RAG:** Embeds PDFs locally using FAISS and HuggingFace, persisting the index to disk to avoid re-processing.
+* **Efficient RAG:** Embeds PDFs locally using FAISS, persisting the index to disk to avoid re-processing.
 
 ---
 
