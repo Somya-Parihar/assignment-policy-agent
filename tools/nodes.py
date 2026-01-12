@@ -1,8 +1,8 @@
 import json
 import logging
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from state import AgentState
-from resources import llm, retriever, calculate_premium
+from tools.state import AgentState
+from tools.resources import llm, retriever, calculate_premium
 
 # --- LOGGING SETUP ---
 logging.basicConfig(
