@@ -5,7 +5,6 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from state import AgentState
 from nodes import intent_router, support_node, lead_qualifier_node, agentic_node
 
-# Setup connection (check_same_thread=False is required for FastAPI concurrency)
 conn = sqlite3.connect("checkpoints.db", check_same_thread=False)
 checkpointer = SqliteSaver(conn)
 
