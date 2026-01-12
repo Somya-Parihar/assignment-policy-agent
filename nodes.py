@@ -110,6 +110,7 @@ def lead_qualifier_node(state: AgentState):
         
         extraction_prompt = f"""
         Extract these fields if present: age, location, income.
+        Age and Income are both always supposed to be integers
         Current info: {user_info}
         User input: "{last_message.content}"
         Return JSON with keys 'age', 'location', 'income'. Keep missing values null.

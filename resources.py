@@ -2,8 +2,7 @@ import json
 import os
 import logging
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI,GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.document_loaders import PyPDFLoader
@@ -42,7 +41,10 @@ PDF_PATH = "policy.pdf"
 DB_PATH = "faiss_index_store"
 
 # Initialize Embeddings (Must be same for saving and loading)
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="models/embedding-001",
+    google_api_key=api_key
+)
 
 def get_vector_store():
     """

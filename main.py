@@ -1,61 +1,15 @@
-import sqlite3
-from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.sqlite import SqliteSaver
+# main.py
 from langchain_core.messages import HumanMessage, AIMessage
-from state import AgentState
-from nodes import intent_router, support_node, lead_qualifier_node, agentic_node
+from graph_builder import graph_app  # <--- Changed import
 
-workflow = StateGraph(AgentState)
-
-# Add Nodes
-workflow.add_node("router", intent_router)
-workflow.add_node("support", support_node)
-workflow.add_node("qualifier", lead_qualifier_node)
-workflow.add_node("agent", agentic_node)
-
-workflow.set_entry_point("router")
-
-# Conditional Edges (Router logic)
-def route_decision(state):
-    # If the user asks a question, go to support, but stay in the loop (END of run, not END of app)
-    if state["dialog_state"] == "support":
-        return "support"
-    return "qualifier"
-
-workflow.add_conditional_edges(
-    "router",
-    route_decision,
-    {"support": "support", "qualifier": "qualifier"}
-)
-
-# Conditional Edges (Qualifier logic)
-def qualifier_decision(state):
-    # Only go to agent if we are actually done collecting info
-    if state["dialog_state"] == "completed":
-        return "agent"
-    return END # Otherwise, wait for more user input
-
-workflow.add_conditional_edges(
-    "qualifier",
-    qualifier_decision,
-    {"agent": "agent", END: END}
-)
-
-# Terminal Edges
-workflow.add_edge("support", END)
-workflow.add_edge("agent", END)
-
-conn = sqlite3.connect("checkpoints.db", check_same_thread=False)
-checkpointer = SqliteSaver(conn)
-
-app = workflow.compile(checkpointer=checkpointer)
-
-# --- 3. EXECUTION UTILITY ---
+# --- EXECUTION UTILITY ---
 def run_chat(thread_id):
     print(f"\n--- Starting Chat (Thread: {thread_id}) ---")
     config = {"configurable": {"thread_id": thread_id}}
     
-    current_state = app.get_state(config)
+    # Check history using the imported app
+    current_state = graph_app.get_state(config)
+    
     if current_state.values:
         print("--- Resuming Conversation (Last 3 Messages) ---")
         messages = current_state.values.get("messages", [])
@@ -80,14 +34,13 @@ def run_chat(thread_id):
             print("Goodbye!")
             break
             
-        # Run the graph
-        events = app.stream(
+        # Run the graph using the imported app
+        events = graph_app.stream(
             {"messages": [HumanMessage(content=user_input)]}, 
             config, 
             stream_mode="values"
         )
         
-        # Track if we need to exit after this turn
         should_terminate = False
         
         for event in events:

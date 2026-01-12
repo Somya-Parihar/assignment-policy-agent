@@ -44,10 +44,17 @@ You need a Google Gemini API key to run the LLM.
 Place your insurance policy PDF in the root folder and name it policy.pdf. (If no PDF is found, the agent will initialize with an empty knowledge base, but it will not crash.)
 
 ## Usage
-To start the agent in your terminal:
+1. To start the agent in your terminal:
 ```Bash
 python main.py
 ```
+2. to start the agent in api mode
+```Bash
+python api.py
+```
+this will be a web page on `localhost:8000`
+
+
 Interaction Guide
 * Ask Questions: "Does this policy cover theft?" (Triggers RAG)
 

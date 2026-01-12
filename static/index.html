@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insurance AI Agent</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; background-color: #f4f4f9; }
+        
+        /* Sidebar */
+        #sidebar { width: 260px; background-color: #2c3e50; color: white; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        #sidebar h2 { margin-top: 0; font-size: 1.2rem; }
+        #new-chat-btn { background-color: #3498db; border: none; padding: 10px; color: white; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold; width: 100%; }
+        #new-chat-btn:hover { background-color: #2980b9; }
+        #thread-list { overflow-y: auto; flex: 1; }
+        .thread-item { padding: 10px; background: #34495e; margin-bottom: 5px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .thread-item:hover { background: #3e5871; }
+        .thread-item.active { background: #1abc9c; }
+
+        /* Main Chat Area */
+        #chat-container { flex: 1; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        #messages { flex: 1; overflow-y: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Message Bubbles */
+        .message { max-width: 70%; padding: 12px 16px; border-radius: 20px; line-height: 1.5; font-size: 0.95rem; }
+        .user-message { align-self: flex-end; background-color: #3498db; color: white; border-bottom-right-radius: 2px; }
+        .agent-message { align-self: flex-start; background-color: #eec170; color: #2c3e50; border-bottom-left-radius: 2px; }
+        .system-message { align-self: center; background-color: #ecf0f1; color: #7f8c8d; font-size: 0.85rem; padding: 5px 15px; border-radius: 10px; }
+
+        /* Input Area */
+        #input-area { margin-top: 20px; display: flex; gap: 10px; }
+        #user-input { flex: 1; padding: 15px; border: 1px solid #ccc; border-radius: 30px; outline: none; font-size: 1rem; }
+        #send-btn { background-color: #27ae60; color: white; border: none; padding: 0 25px; border-radius: 30px; cursor: pointer; font-weight: bold; }
+        #send-btn:disabled { background-color: #95a5a6; }
+
+        /* Loading Spinner */
+        .typing { font-style: italic; color: #7f8c8d; font-size: 0.8rem; margin-left: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h2>History</h2>
+        <button id="new-chat-btn" onclick="startNewChatUI()">+ New Chat</button>
+        <div id="thread-list">
+            </div>
+    </div>
+
+    <div id="chat-container">
+        <div id="messages">
+            <div class="message system-message">Select a thread or start a new chat.</div>
+        </div>
+        <div class="typing" id="typing-indicator">Agent is thinking...</div>
+        <div id="input-area">
+            <input type="text" id="user-input" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+            <button id="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let currentThreadId = null;
+
+        // --- 1. Load Threads on Startup ---
+        async function loadThreads() {
+            try {
+                const res = await fetch('/api/threads');
+                const data = await res.json();
+                const list = document.getElementById('thread-list');
+                list.innerHTML = '';
+                
+                // Show most recent first (simple reverse for now)
+                data.threads.reverse().forEach(id => {
+                    const div = document.createElement('div');
+                    div.className = 'thread-item';
+                    div.innerText = `Session: ${id.substring(0, 8)}...`;
+                    div.onclick = () => loadHistory(id);
+                    if (id === currentThreadId) div.classList.add('active');
+                    list.appendChild(div);
+                });
+            } catch (e) {
+                console.error("Failed to load threads", e);
+            }
+        }
+
+        // --- 2. Load History for a Specific Thread ---
+        async function loadHistory(threadId) {
+            currentThreadId = threadId;
+            updateSidebarActiveState();
+            
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = '<div class="message system-message">Loading history...</div>';
+
+            try {
+                const res = await fetch(`/api/chat/${threadId}/history`);
+                const data = await res.json();
+                messagesDiv.innerHTML = '';
+
+                if (data.history.length === 0) {
+                    messagesDiv.innerHTML = '<div class="message system-message">New conversation started.</div>';
+                } else {
+                    data.history.forEach(msg => appendMessage(msg.role, msg.content));
+                }
+                scrollToBottom();
+            } catch (e) {
+                messagesDiv.innerHTML = '<div class="message system-message">Error loading history.</div>';
+            }
+        }
+
+        // --- 3. Start New Chat UI ---
+        function startNewChatUI() {
+            currentThreadId = null; // Will get ID after first message or explicit creation
+            document.getElementById('messages').innerHTML = '<div class="message system-message">Start typing to create a new session...</div>';
+            updateSidebarActiveState();
+            document.getElementById('user-input').focus();
+        }
+
+        // --- 4. Send Message Logic ---
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            appendMessage('user', text);
+            input.value = '';
+            document.getElementById('typing-indicator').style.display = 'block';
+
+            try {
+                let url, body;
+                
+                if (!currentThreadId) {
+                    // Start New Chat
+                    url = '/api/chat/new';
+                    body = { message: text };
+                } else {
+                    // Continue Chat
+                    url = `/api/chat/${currentThreadId}`;
+                    body = { message: text };
+                }
+
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await res.json();
+                
+                // If this was a new chat, set the ID and reload sidebar
+                if (!currentThreadId) {
+                    currentThreadId = data.thread_id;
+                    loadThreads(); // Refresh sidebar to show new session
+                }
+
+                document.getElementById('typing-indicator').style.display = 'none';
+                appendMessage('agent', data.response);
+                
+                if (data.is_finished) {
+                    appendMessage('system', 'Transaction Completed.');
+                }
+
+            } catch (e) {
+                document.getElementById('typing-indicator').style.display = 'none';
+                appendMessage('system', 'Error connecting to server.');
+            }
+        }
+
+        // --- Helpers ---
+        function appendMessage(role, text) {
+            const div = document.createElement('div');
+            div.className = `message ${role === 'user' ? 'user-message' : role === 'agent' ? 'agent-message' : 'system-message'}`;
+            div.innerText = text;
+            document.getElementById('messages').appendChild(div);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            const div = document.getElementById('messages');
+            div.scrollTop = div.scrollHeight;
+        }
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        function updateSidebarActiveState() {
+            const items = document.querySelectorAll('.thread-item');
+            items.forEach(item => item.classList.remove('active'));
+            // Highlighting specific item would require matching text or IDs stored in DOM
+        }
+
+        // Initialize
+        loadThreads();
+    </script>
+</body>
+</html>
