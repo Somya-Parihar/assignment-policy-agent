@@ -1,0 +1,12 @@
+langchain
+langgraph
+langchain-google-genai
+langchain-community
+faiss-cpu
+python-dotenv
+pydantic
+langchain-huggingface
+sentence-transformers
+hf_xet
+pypdf
+langgraph-checkpoint-sqlite
